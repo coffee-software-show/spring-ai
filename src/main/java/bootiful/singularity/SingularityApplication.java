@@ -30,7 +30,6 @@ public class SingularityApplication {
         System.out.println("run info");
         aiResponse.getRunInfo().forEach((k, v) -> System.out.println(k + '=' + v));
         System.out.println("generation:" + aiResponse.getGeneration());
-
     }
 
 

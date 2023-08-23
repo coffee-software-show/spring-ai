@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@ImportRuntimeHints({SpringAiHints.Hints.class, SpringAiHints.SingularityHints.class})
+@ImportRuntimeHints({  SpringAiHints.SingularityHints.class})
 @SpringBootApplication
 public class SpringAiHints {
 
@@ -35,20 +35,6 @@ public class SpringAiHints {
         }
     }
 
-    static class Hints implements RuntimeHintsRegistrar {
-
-        @Override
-        public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
-            hints.proxies().registerJdkProxy(TypeReference.of("com.theokanning.openai.OpenAiApi"));
-            for (var className : Set.of(
-                    "com.theokanning.openai.Usage",
-                    "com.theokanning.openai.completion.chat.ChatCompletionChoice",
-                    "com.theokanning.openai.completion.chat.ChatCompletionRequest",
-                    "com.theokanning.openai.completion.chat.ChatCompletionResult",
-                    "com.theokanning.openai.completion.chat.ChatMessage"))
-                hints.reflection().registerType(TypeReference.of(className), MemberCategory.values());
-        }
-    }
 
     public static void main(String[] args) {
         SpringApplication.run(SpringAiHints.class, args);
@@ -73,6 +59,7 @@ public class SpringAiHints {
         System.out.println("format: " + formatString);
         var userMessage = """
                 Generate the filmography for the actor {actor}.
+                
                 {format}
                 """;
         var pt = new PromptTemplate(userMessage, Map.of("format", formatString, "actor", "Jeff Bridges"));
@@ -109,5 +96,5 @@ public class SpringAiHints {
     }
 }
 
-record ActorsFilms(String $schema, String actor, List<String> movies) {
+record ActorsFilms(String actor, List<String> movies) {
 }

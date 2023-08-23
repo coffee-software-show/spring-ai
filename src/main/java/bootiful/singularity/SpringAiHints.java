@@ -1,25 +1,59 @@
 package bootiful.singularity;
 
+
 import org.springframework.ai.client.AiClient;
 import org.springframework.ai.parser.BeanOutputParser;
 import org.springframework.ai.prompt.Prompt;
 import org.springframework.ai.prompt.PromptTemplate;
+import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.aot.hint.TypeReference;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+@ImportRuntimeHints({SpringAiHints.Hints.class, SpringAiHints.SingularityHints.class})
 @SpringBootApplication
-public class SingularityApplication {
+public class SpringAiHints {
+
+    static class SingularityHints implements RuntimeHintsRegistrar {
+
+        @Override
+        public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+            hints.resources().registerResource(new ClassPathResource("/wikipedia-curling.md"));
+            hints.resources().registerResource(new ClassPathResource("/joke-prompt.st"));
+            hints.reflection().registerType(ActorsFilms.class, MemberCategory.values());
+        }
+    }
+
+    static class Hints implements RuntimeHintsRegistrar {
+
+        @Override
+        public void registerHints(RuntimeHints hints, ClassLoader classLoader) {
+            hints.proxies().registerJdkProxy(TypeReference.of("com.theokanning.openai.OpenAiApi"));
+            for (var className : Set.of(
+                    "com.theokanning.openai.Usage",
+                    "com.theokanning.openai.completion.chat.ChatCompletionChoice",
+                    "com.theokanning.openai.completion.chat.ChatCompletionRequest",
+                    "com.theokanning.openai.completion.chat.ChatCompletionResult",
+                    "com.theokanning.openai.completion.chat.ChatMessage"))
+                hints.reflection().registerType(TypeReference.of(className), MemberCategory.values());
+        }
+    }
 
     public static void main(String[] args) {
-        SpringApplication.run(SingularityApplication.class, args);
+        SpringApplication.run(SpringAiHints.class, args);
     }
+
 
     private void one(Resource resource, AiClient aiClient) {
         var promptTemplate = new PromptTemplate(resource);
@@ -34,7 +68,6 @@ public class SingularityApplication {
 
 
     private void two(AiClient aiClient) throws Exception {
-
         var bop = new BeanOutputParser<>(ActorsFilms.class);
         var formatString = bop.getFormat();
         System.out.println("format: " + formatString);
@@ -42,8 +75,7 @@ public class SingularityApplication {
                 Generate the filmography for the actor {actor}.
                 {format}
                 """;
-        var pt = new PromptTemplate(userMessage, Map.of("format", formatString, "actor",
-                "Jeff Bridges"));
+        var pt = new PromptTemplate(userMessage, Map.of("format", formatString, "actor", "Jeff Bridges"));
         var prompt = new Prompt(pt.createMessage());
         var generation = aiClient.generate(prompt).getGeneration();
         var actorFilmsResults = bop.parse(generation.getText());
@@ -68,15 +100,14 @@ public class SingularityApplication {
     }
 
     @Bean
-    ApplicationRunner applicationRunner(
-            AiClient aiClient) {
+    ApplicationRunner applicationRunner(AiClient aiClient) {
         return args -> {
             one(new ClassPathResource("/joke-prompt.st"), aiClient);
             two(aiClient);
-            three(new ClassPathResource("/wikipedia-curling.md"), aiClient);
+            // three(new ClassPathResource("/wikipedia-curling.md"), aiClient);
         };
     }
 }
 
-record ActorsFilms(String actor, List<String> movies) {
+record ActorsFilms(String $schema, String actor, List<String> movies) {
 }
